@@ -1,5 +1,7 @@
 from app.models.event_model import Event
 from app.services.notification_service import NotificationService
+from app.repositories.event_repository import EventRepository
+
 import datetime
 
 class EventService:
@@ -8,6 +10,10 @@ class EventService:
         try:
             event_processor = EventProcessorFactory.create_event_processor(event)
             event_processor.process(event)
+            print(event)
+            # Store the event in the JSON file
+            event_repository = EventRepository('..\data\events.json')
+            event_repository.add_item(event)
         except Exception as e:
             # Handle exceptions gracefully, for example, log the error
             print(f"Error processing event: {e}")
@@ -19,10 +25,10 @@ class EventProcessor:
 class TrainingProgramFinishedEventProcessor(EventProcessor):
     def process(self, event):
         try:
-            duration = event.training_program_duration
+            duration = event["training_program_duration"]
             if duration > 30:
                 minutes_trained = duration
-                NotificationService.notify_user(event.user_id, f"Congratulations! You've completed a {minutes_trained}-minute training program.")
+                NotificationService.notify_user(event["user_id"], f"Congratulations! You've completed a {minutes_trained}-minute training program.")
         except Exception as e:
             # Handle exceptions gracefully, for example, log the error
             print(f"Error processing training program finished event: {e}")
@@ -31,9 +37,9 @@ class AppLaunchEventProcessor(EventProcessor):
     def process(self, event):
         try:
             # Check if the user starts a training program within 10 minutes
-            ten_minutes_later = event.event_timestamp + datetime.timedelta(minutes=10)
+            ten_minutes_later = event["event_timestamp"] + datetime.timedelta(minutes=10)
             if ten_minutes_later <= datetime.datetime.now():
-                NotificationService.notify_user(event.user_id, "Start training now!")
+                NotificationService.notify_user(event["user_id"], "Start training now!")
         except Exception as e:
             # Handle exceptions gracefully, for example, log the error
             print(f"Error processing app launch event: {e}")
@@ -41,7 +47,8 @@ class AppLaunchEventProcessor(EventProcessor):
 class TrainingProgramStartedEventProcessor(EventProcessor):
     def process(self, event):
         try:
-            NotificationService.notify_user(event.user_id, "Training program started")
+            print(event["user_id"])
+            NotificationService.notify_user(event["user_id"], "Training program started")
         except Exception as e:
             # Handle exceptions gracefully, for example, log the error
             print(f"Error processing training program started event: {e}")
@@ -49,7 +56,7 @@ class TrainingProgramStartedEventProcessor(EventProcessor):
 class TrainingProgramCancelledEventProcessor(EventProcessor):
     def process(self, event):
         try:
-            NotificationService.notify_user(event.user_id, "Training program cancelled")
+            NotificationService.notify_user(event["user_id"], "Training program cancelled")
         except Exception as e:
             # Handle exceptions gracefully, for example, log the error
             print(f"Error processing training program cancelled event: {e}")
@@ -64,7 +71,7 @@ class UnknownEventProcessor(EventProcessor):
 class EventProcessorFactory:
     @staticmethod
     def create_event_processor(event):
-        event_type = event.event_type
+        event_type = event["event_type"]
         if event_type == 'training_program_finished':
             return TrainingProgramFinishedEventProcessor()
         elif event_type == 'app_launch':
